@@ -173,8 +173,29 @@ def get_rays(H, W, K, c2w):
     # later on we have a separate variable named viewdirs for normalized ray directions. Both versions will be useful.)
     #############################################################
     # Your code starts here
-    raise NotImplementedError("Not implemented")
-    
+
+    fx = K[0, 0]
+    fy = K[1, 1]
+    cx = K[0, 2]
+    cy = K[1, 2]
+
+    i, j = torch.meshgrid(
+        torch.arange(W, dtype=torch.float32), torch.arange(H, dtype=torch.float32), indexing='xy'
+    )
+
+    d_c = torch.stack([
+        (i - cx) / fx,
+        -(j - cy) / fy,
+        -torch.ones_like(i)
+    ], dim=-1)  # (H, W, 3)
+
+    #print(c2w)
+    # print(c2w.shape)
+    R = c2w[:3, :3]
+    t = c2w[:3, 3]
+    rays_d = torch.sum(d_c[..., None, :] * R[None, None, :, :], dim=-1)
+    rays_o = t.expand(rays_d.shape)
+
     # Your code ends here
     #############################################################
     return rays_o, rays_d
