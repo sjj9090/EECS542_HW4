@@ -362,17 +362,15 @@ def sample_points(rays_o, rays_d, near, far, N_samples):
     #############################################################
     # Your code starts here
 
-    t_vals = torch.linspace(0.0, 1.0, N_samples, device=rays_o.device)
-    z_vals = near * (1.0 - t_vals) + far * t_vals  # [N_rays, N_samples]
-
+    t_vals = torch.linspace(0.0, 1.0, N_samples)
+    z_vals = near * (1.0 - t_vals) + far * t_vals
     mids = 0.5 * (z_vals[..., 1:] + z_vals[..., :-1])
     upper = torch.cat([mids, z_vals[..., -1:]], dim=-1)
     lower = torch.cat([z_vals[..., :1], mids], dim=-1)
 
-    t_rand = torch.rand(z_vals.shape, device=rays_o.device)
-    z_vals = lower + (upper - lower) * t_rand  # [N_rays, N_samples]
-
-    pts = rays_o[..., None, :] + rays_d[..., None, :] * z_vals[..., :, None]  # [N_rays, N_samples, 3]
+    #print("error here")
+    t_rand = torch.rand(z_vals.shape)
+    z_vals = lower + (upper - lower) * t_rand
 
     # Your code ends here
     #############################################################
