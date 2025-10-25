@@ -174,27 +174,30 @@ def get_rays(H, W, K, c2w):
     #############################################################
     # Your code starts here
 
-    fx = K[0, 0]
-    fy = K[1, 1]
+    f_x = K[0, 0]
+    f_y = K[1, 1]
     cx = K[0, 2]
     cy = K[1, 2]
 
+    # torch.meshgrid were suggested in the hint
     i, j = torch.meshgrid(
-        torch.arange(W, dtype=torch.float32), torch.arange(H, dtype=torch.float32), indexing='xy'
-    )
+        torch.arange(W, dtype=torch.float32), torch.arange(H, dtype=torch.float32), indexing='xy')
 
+    # based on the pdf provided
     d_c = torch.stack([
-        (i - cx) / fx,
-        -(j - cy) / fy,
+        (i - cx)/f_x,
+        -(j - cy)/f_y,
         -torch.ones_like(i)
-    ], dim=-1)  # (H, W, 3)
+    ], dim=-1) 
 
     #print(c2w)
     # print(c2w.shape)
     R = c2w[:3, :3]
     t = c2w[:3, 3]
     rays_d = torch.sum(d_c[..., None, :] * R[None, None, :, :], dim=-1)
-    rays_o = t.expand(rays_d.shape)
+    rays_o  = t.expand(rays_d.shape)
+    #print(rays_o.shape)
+    # print(rays_d.shape)
 
     # Your code ends here
     #############################################################

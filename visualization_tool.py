@@ -7,7 +7,6 @@ def visualize_curves(train_loss_list, psnr_list, save_dir, name_prefix="coarse")
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
 
-    # Plot training loss
     plt.figure()
     plt.plot(train_loss_list, label='Training Loss (' + name_prefix + ')')
     plt.xlabel('Iterations')
@@ -18,7 +17,6 @@ def visualize_curves(train_loss_list, psnr_list, save_dir, name_prefix="coarse")
     plt.savefig(os.path.join(save_dir, f'{name_prefix}_train_loss_curve.png'))
     plt.close()
 
-    # Plot training loss
     plt.figure()
     plt.plot(train_loss_list, label='Training Loss (' + name_prefix + ')')
     plt.xlabel('Iterations')
@@ -30,7 +28,6 @@ def visualize_curves(train_loss_list, psnr_list, save_dir, name_prefix="coarse")
     plt.savefig(os.path.join(save_dir, f'{name_prefix}_train_loss_curve_detailed.png'))
     plt.close()
 
-    # Plot PSNR
     plt.figure()
     plt.plot(psnr_list, label='PSNR', color='orange')
     plt.xlabel('Iterations')
@@ -45,13 +42,11 @@ def plot_and_save(x_list, y_list, save_path="", title="Test Average PSNR", xlabe
 
     plt.figure(figsize=(6, 4))
     plt.plot(x_list, y_list, marker='o', linestyle='-', linewidth=2)
-
     plt.title(title + ' (' + type_to + ')')
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
     plt.grid(True)
     plt.tight_layout()
-
     plt.savefig(save_path+'/'+str(type_to)+"test_average_psnr.png")
     plt.close()
 
@@ -66,7 +61,7 @@ def plot_image_grid(save_path="figure", folder="logs/blender_lego_coarse", type_
 
     for i in range(6):
         for j in range(5):
-            idx = i * 5 + j
+            # index = i * 5 + j
             img = mpimg.imread(folder + '/' + iteration_list[j] + '/' + image_name_list[i])
             axes[i, j].imshow(img)
             axes[i, j].axis("off")

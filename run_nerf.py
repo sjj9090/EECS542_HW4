@@ -300,15 +300,16 @@ def compute_bin_dists(z_vals, rays_d):
     #############################################################
     # Your code starts here
     # print(z_vals.shape)
-    dists = z_vals[..., 1:] - z_vals[..., :-1] 
-    #print(dists.shape)
+    distances = z_vals[..., 1:] - z_vals[..., :-1] 
+    #print(distances.shape)
     last_bin = torch.full_like(z_vals[..., :1], 1e10)
     #print(last_bin.shape)
-    dists = torch.cat([dists, last_bin], dim=-1) 
-    #print(dists.shape)
+    distances = torch.cat([distances, last_bin], dim=-1) 
+    #print(distances.shape)
     ray_norm = torch.norm(rays_d, dim=-1, keepdim=True) 
     #print(ray_norm.shape)
-    dists = dists * ray_norm
+    distances = distances * ray_norm
+    dists = distances
     #print(dists.shape)
     # Your code ends here
     #############################################################
@@ -333,7 +334,10 @@ def compute_alpha(sigma, dists):
     # Your code starts here
     #raise NotImplementedError("Not implemented")
     non_neg = torch.clamp(sigma, min=0.0)
+    #print(non_neg.shape)
     alpha = 1.0 - torch.exp(-non_neg * dists)
+    # print(alpha.shape)
+    # print(alpha)
     return alpha
     # Your code ends here
     #############################################################
@@ -354,15 +358,15 @@ def compute_weights(alpha):
     # Then weights[i] = T[i] * alpha[i]
     #############################################################
     # Your code starts here
-    transmit_input = torch.cat(
+    input = torch.cat(
         [torch.ones_like(alpha[..., :1]), 1.0 - alpha + 1e-10],
-        dim=-1
-    )
-    transmit_cumprod = torch.cumprod(transmit_input, dim=-1)
+        dim=-1)
+    transmit_cumprod = torch.cumprod(input, dim=-1)
     transmittance = transmit_cumprod[..., :-1]
     #print(transmittance.shape, transmit_input.shape, transmit_cumprod.shape, alpha.shape)
 
     weights = alpha* transmittance
+    #print(weights.shape)
     return weights
     # Your code ends here
     #############################################################
@@ -389,16 +393,17 @@ def sample_points(rays_o, rays_d, near, far, N_samples):
     #############################################################
     # Your code starts here
 
-    t_vals = torch.linspace(0.0, 1.0, N_samples)
-    z_vals = near * (1.0 - t_vals) + far * t_vals
+    evenly_spaced = torch.linspace(0.0, 1.0, N_samples)
+    z_vals = near* (1.0 - evenly_spaced) + far * evenly_spaced
     mids = 0.5 * (z_vals[..., 1:] + z_vals[..., :-1])
+    #print(mids.shape)
     upper = torch.cat([mids, z_vals[..., -1:]], dim=-1)
     lower = torch.cat([z_vals[..., :1], mids], dim=-1)
 
     #print("error here")
     # print(lower.shape, upper.shape)
-    t_rand = torch.rand(z_vals.shape)
-    z_vals = lower + (upper - lower) * t_rand
+    random_selected = torch.rand(z_vals.shape)
+    z_vals = lower + (upper -lower) * random_selected
 
     # Your code ends here
     #############################################################
