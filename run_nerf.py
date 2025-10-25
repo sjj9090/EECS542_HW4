@@ -265,7 +265,14 @@ def volume_rendering(raw, z_vals, rays_d, white_bkgd=False):
     # - acc_map: sum of weights (total opacity) along each ray
     #############################################################
     # Your code starts here
-    raise NotImplementedError("Not implemented")
+    dists = compute_bin_dists(z_vals, rays_d)          # [N_rays, N_samples]
+    rgb = torch.sigmoid(raw[..., :3])                  # [N_rays, N_samples, 3]
+    alpha = compute_alpha(raw[..., 3], dists)          # [N_rays, N_samples]
+    weights = compute_weights(alpha)    
+
+    rgb_map = torch.sum(weights[..., None] * rgb, dim=-2)
+    depth_map = torch.sum(weights * z_vals, dim=-1) 
+    acc_map = torch.sum(weights, dim=-1)  
 
     # Your code ends here
     #############################################################
@@ -292,10 +299,20 @@ def compute_bin_dists(z_vals, rays_d):
     # 3. Scale by ray direction magnitude: ||rays_d|| to get actual distances in 3D space
     #############################################################
     # Your code starts here
-    raise NotImplementedError("Not implemented")
-
+    # print(z_vals.shape)
+    dists = z_vals[..., 1:] - z_vals[..., :-1] 
+    #print(dists.shape)
+    last_bin = torch.full_like(z_vals[..., :1], 1e10)
+    #print(last_bin.shape)
+    dists = torch.cat([dists, last_bin], dim=-1) 
+    #print(dists.shape)
+    ray_norm = torch.norm(rays_d, dim=-1, keepdim=True) 
+    #print(ray_norm.shape)
+    dists = dists * ray_norm
+    #print(dists.shape)
     # Your code ends here
     #############################################################
+    return dists
 
 
 def compute_alpha(sigma, dists):
@@ -314,8 +331,10 @@ def compute_alpha(sigma, dists):
     # - delta is the distance between sample points (dists)
     #############################################################
     # Your code starts here
-    raise NotImplementedError("Not implemented")
-
+    #raise NotImplementedError("Not implemented")
+    non_neg = torch.clamp(sigma, min=0.0)
+    alpha = 1.0 - torch.exp(-non_neg * dists)
+    return alpha
     # Your code ends here
     #############################################################
 
@@ -335,8 +354,16 @@ def compute_weights(alpha):
     # Then weights[i] = T[i] * alpha[i]
     #############################################################
     # Your code starts here
-    raise NotImplementedError("Not implemented")
+    transmit_input = torch.cat(
+        [torch.ones_like(alpha[..., :1]), 1.0 - alpha + 1e-10],
+        dim=-1
+    )
+    transmit_cumprod = torch.cumprod(transmit_input, dim=-1)
+    transmittance = transmit_cumprod[..., :-1]
+    #print(transmittance.shape, transmit_input.shape, transmit_cumprod.shape, alpha.shape)
 
+    weights = alpha* transmittance
+    return weights
     # Your code ends here
     #############################################################
 
@@ -369,6 +396,7 @@ def sample_points(rays_o, rays_d, near, far, N_samples):
     lower = torch.cat([z_vals[..., :1], mids], dim=-1)
 
     #print("error here")
+    # print(lower.shape, upper.shape)
     t_rand = torch.rand(z_vals.shape)
     z_vals = lower + (upper - lower) * t_rand
 
@@ -567,6 +595,8 @@ def config_parser():
 
     return parser
 
+from visualization_tool import visualize_curves, plot_and_save, plot_image_grid
+import pandas as pd
 
 def train():
 
@@ -727,6 +757,13 @@ def train():
     print(f'Number of TRAIN views are {len(i_train)}')
     print(f'Number of TEST views are {len(i_test)}')
     print(f'Number of VAL views are {len(i_val)}')
+    
+    train_loss_list = []
+    psnr_list = []
+    test_list_index = []
+    test_list_psnr = []
+    df1 = pd.DataFrame(columns=["iteration", "train_loss", "train_psnr"])
+    df2 = pd.DataFrame(columns=["iteration", "test_psnr"])
 
     # Clean up existing TensorBoard files
     tensorboard_dir = os.path.join(basedir, expname, 'tensorboard')
@@ -831,18 +868,34 @@ def train():
             # Log test PSNR to TensorBoard
             if mean_psnr is not None:
                 writer.add_scalar('PSNR/Test', mean_psnr, global_step)
+                test_list_index.append(i)
+                test_list_psnr.append(mean_psnr)
+                new_row = {"iteration": i, "test_psnr": mean_psnr}
+                df2 = pd.concat([df2, pd.DataFrame([new_row])], ignore_index=True)
 
         # Print training progress
+        train_loss_list.append(loss.item())
+        psnr_list.append(psnr.item())
+        new_row = {"iteration": i, "train_loss": loss.item(), "train_psnr": psnr.item()}
+        df1 = pd.concat([df1, pd.DataFrame([new_row])], ignore_index=True)
         if i%args.i_print==0:
             tqdm.write(f"[TRAIN] Iter: {i} Loss: {loss.item()}  PSNR: {psnr.item()}")
 
         global_step += 1
 
     # Close TensorBoard writer
+    save_dir = "./figure"
+    coarse_fine = str(expname.split('_')[-1])
+    visualize_curves(train_loss_list, psnr_list, save_dir, name_prefix=coarse_fine)
+    plot_and_save(test_list_index, test_list_psnr, save_path=save_dir, type_to=coarse_fine)
+    print("Saving image grid...")
+    print(expname, coarse_fine)
+    plot_image_grid(folder = "logs/" + expname, save_path = save_dir, type_to=coarse_fine)
+    df1.to_csv(os.path.join(save_dir, f'{coarse_fine}_train.csv'), index=False)
+    df2.to_csv(os.path.join(save_dir, f'{coarse_fine}_test.csv'), index=False)
     writer.close()
 
 
 if __name__=='__main__':
     torch.set_default_tensor_type('torch.cuda.FloatTensor')
-
     train()
